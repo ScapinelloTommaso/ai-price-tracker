@@ -46,7 +46,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   console.log('[addProduct] Ricevuta richiesta:', JSON.stringify(event.body));
 
   try {
-    // 1. Parsing e validazione del body
+    // 1. Parsing e validazione del body e headers
+    const userId = event.headers['x-user-id'] || event.headers['X-User-Id'];
+    if (!userId) {
+      return apiResponse(400, {
+        message: 'Accesso negato: header x-user-id mancante.',
+        statusCode: 400,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     if (!event.body) {
       return apiResponse(400, {
         message: 'Il body della richiesta è obbligatorio.',
@@ -117,6 +126,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       source,
       createdAt: now,
       updatedAt: now,
+      userId,
       ...(chatId && { chatId })
     };
 

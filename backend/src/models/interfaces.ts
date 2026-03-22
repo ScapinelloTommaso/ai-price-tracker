@@ -12,6 +12,7 @@ export interface Product {
   source: string;
   createdAt: string;  // ISO 8601
   updatedAt: string;  // ISO 8601
+  userId: string;
   chatId?: string;
 }
 

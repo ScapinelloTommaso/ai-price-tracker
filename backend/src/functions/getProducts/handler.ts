@@ -32,7 +32,18 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   console.log('[getProducts] Inizio richiesta');
 
   try {
-    const command = new ScanCommand({ TableName: PRODUCTS_TABLE });
+    const userId = event.headers['x-user-id'] || event.headers['X-User-Id'];
+    if (!userId) {
+      return apiResponse(400, { message: 'L\'header x-user-id è obbligatorio.' });
+    }
+
+    const command = new ScanCommand({ 
+      TableName: PRODUCTS_TABLE,
+      FilterExpression: 'userId = :uid',
+      ExpressionAttributeValues: {
+        ':uid': userId
+      }
+    });
     const response = await docClient.send(command);
     const products = (response.Items || []) as Product[];
 
