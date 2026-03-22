@@ -1,0 +1,19 @@
+{
+  "name": "ai-price-tracker",
+  "version": "1.0.0",
+  "description": "AI-Powered Price Tracker — Monorepo",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "frontend:dev": "cd frontend && ng serve",
+    "backend:build": "cd backend && npm run build",
+    "sam:validate": "sam validate --template template.yaml",
+    "sam:local": "sam local start-api"
+  },
+  "keywords": ["price-tracker", "serverless", "angular", "aws"],
+  "author": "",
+  "license": "ISC"
+}

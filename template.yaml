@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AI-Powered Price Tracker — Serverless Backend
+  Scraping engine con LLM (Claude 3 Haiku) per il tracciamento prezzi e-commerce.
+
+# ============================================================
+# AWS SSM PARAMETER STORE REQUIREMENTS
+# ============================================================
+# Prima di eseguire il deploy o usare AWS SAM Local, assicurati di aver creato
+# questi parametri in AWS Systems Manager Parameter Store. I parametri devono
+# essere stringhe (o SecureString per i token). Assicurati che il path contenga
+# lo Stage di deployment (es. 'dev'):
+#
+# 1. /price-tracker/dev/gemini-api-key : API Key di Google (Gemini 2.0 Flash)
+# 2. /price-tracker/dev/telegram-bot-token : Token Bot Telegram
+# 3. /price-tracker/dev/telegram-chat-id : Chat ID Telegram per gli alert
+# ============================================================
+# PARAMETERS
+# ============================================================
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Ambiente di deployment
+
+# ============================================================
+# GLOBALS
+# ============================================================
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS,PUT,DELETE'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 1024
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        PRODUCTS_TABLE: !Ref ProductsTable
+        PRICE_HISTORY_TABLE: !Ref PriceHistoryTable 
+        GROQ_API_KEY: "INSERISCI_LA_TUA_CHIAVE_GROQ_QUI"
+
+# ============================================================
+# RESOURCES
+# ============================================================
+Resources:
+
+  # --- API Gateway ---
+  PriceTrackerApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+
+  # --- DynamoDB Tables ---
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'PriceTracker-Products-${Stage}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: productId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: productId
+          KeyType: HASH
+
+  PriceHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'PriceTracker-PriceHistory-${Stage}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: productId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: productId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+
+  # --- Lambda Functions ---
+  AddProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/functions/addProduct/handler.handler
+      CodeUri: backend/
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PriceHistoryTable
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub 'price-tracker/${Stage}/*'
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PriceTrackerApi
+            Path: /products
+            Method: POST
+
+  GetProductsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/functions/getProducts/handler.handler
+      CodeUri: backend/
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ProductsTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PriceTrackerApi
+            Path: /products
+            Method: GET
+
+  GetPriceHistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/functions/getPriceHistory/handler.handler
+      CodeUri: backend/
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref PriceHistoryTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PriceTrackerApi
+            Path: /products/{productId}/history
+            Method: GET
+
+  RefreshPricesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/functions/refreshPrices/handler.handler
+      CodeUri: backend/
+      Timeout: 300
+      MemorySize: 1024
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PriceHistoryTable
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub 'price-tracker/${Stage}/*'
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PriceTrackerApi
+            Path: /products/{productId}/refresh
+            Method: POST
+        ScheduledRefresh:
+          Type: Schedule
+          Properties:
+            Schedule: rate(6 hours)
+            Description: Refresh automatico prezzi ogni 6 ore
+            Enabled: true
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+Outputs:
+  ApiUrl:
+    Description: URL dell'API Gateway
+    Value: !Sub 'https://${PriceTrackerApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/'
+  ProductsTableName:
+    Description: Nome tabella DynamoDB Products
+    Value: !Ref ProductsTable
+  PriceHistoryTableName:
+    Description: Nome tabella DynamoDB PriceHistory
+    Value: !Ref PriceHistoryTable

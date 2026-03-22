@@ -1,0 +1,40 @@
+<div class="space-y-6">
+  
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-primary-600">
+        Prodotti Tracciati
+      </h1>
+      <p class="text-dark-muted text-sm mt-1">Monitora i prezzi estratti dall'IA in tempo reale.</p>
+    </div>
+    
+    <button class="px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-primary-500/20 active:scale-95 flex items-center gap-2"
+            routerLink="/add">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+      </svg>
+      Aggiungi Prodotto
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="flex justify-center items-center py-20">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+  </div>
+
+  <div *ngIf="error" class="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-xl">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error && products.length === 0" class="text-center py-20 border-2 border-dashed border-dark-surface rounded-2xl">
+    <div class="text-dark-muted mb-4">Nessun prodotto tracciato al momento.</div>
+    <button routerLink="/add" class="text-primary-500 font-medium hover:underline">Aggiungi il tuo primo prodotto</button>
+  </div>
+
+  <div *ngIf="!loading && !error && products.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <app-product-card 
+      *ngFor="let p of products" 
+      [product]="p"
+      (refresh)="refreshPrice($event)"
+    ></app-product-card>
+  </div>
+</div>

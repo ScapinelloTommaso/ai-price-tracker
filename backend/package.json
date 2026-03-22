@@ -1,0 +1,41 @@
+{
+  "name": "ai-price-tracker-backend",
+  "version": "1.0.0",
+  "description": "AI-Powered Price Tracker — Serverless Backend (AWS SAM)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "tsc --noEmit",
+    "start:api": "npx ts-node local-server.ts"
+  },
+  "keywords": [
+    "price-tracker",
+    "serverless",
+    "aws",
+    "lambda"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "*",
+    "@aws-sdk/client-ssm": "*",
+    "@aws-sdk/lib-dynamodb": "*",
+    "groq-sdk": "^0.13.0",
+    "@sparticuz/chromium": "*",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "puppeteer-core": "*",
+    "uuid": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "*",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "*",
+    "esbuild": "*",
+    "ts-node": "^10.9.2",
+    "typescript": "*"
+  }
+}
